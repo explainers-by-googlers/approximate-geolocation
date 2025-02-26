@@ -1,177 +1,227 @@
-# Explainer for the TODO API
+# Approximate Geolocation Explainer
 
-**Instructions for the explainer author: Search for "todo" in this repository and update all the
-instances as appropriate. For the instances in `index.bs`, update the repository name, but you can
-leave the rest until you start the specification. Then delete the TODOs and this block of text.**
+A proposal to add approximate location to Geolocation API.
 
-This proposal is an early design sketch by [TODO: team] to describe the problem below and solicit
-feedback on the proposed solution. It has not been approved to ship in Chrome.
+## Motivation
 
-TODO: Fill in the whole explainer template below using https://tag.w3.org/explainers/ as a
-reference. Look for [brackets].
+Sharing precise location information puts the user's privacy at risk as it can
+reveal sensitive information about the user's personal life such as home
+address, workplace, or place of worship.
+However, users may still wish to share location information to enable a more
+localized experience or facilitate a transaction.
+Approximate information about the user's location (for instance, a postal code)
+has a lower privacy risk and is typically sufficient for most applications.
+Extending Geolocation API to support approximate location would empower users to
+protect their location privacy and enable sites to request safer defaults when
+precise location is not needed.
 
-## Proponents
+In some jurisdictions it is illegal to collect precise geolocation data for
+specific purposes, where "precise" is defined by a maximum accuracy radius.
+Web browsers can facilitate compliance by providing API support for approximate
+geolocation data that meets these requirements.
 
-- [Proponent team 1]
-- [Proponent team 2]
-- [etc.]
+* The [California Privacy Rights Act](https://www.caprivacy.org/cpra-text/#1798.140(w))
+defines precise geolocation as having an accuracy radius of 1,850 feet (564
+meters) or less.
+* The [Connecticut Data Privacy Act](https://www.cga.ct.gov/2022/act/pa/pdf/2022PA-00015-R00SB-00006-PA.pdf)
+defines precise geolocation as 1,750 feet (533 meters) or less.
+* The [Utah Consumer Privacy Act](https://le.utah.gov/~2022/bills/static/SB0227.html)
+defines precise geolocation as 1,750 feet (533 meters) or less.
+* The [Virginia Consumer Data Protection Act](https://law.lis.virginia.gov/vacodefull/title59.1/chapter53/)
+defines precise geolocation as 1,750 feet (533 meters) or less.
 
-## Participate
-- https://github.com/explainers-by-googlers/[your-repository-name]/issues
-- [Discussion forum]
+Mobile operating systems already provide user controls for approximate location.
 
-## Table of Contents [if the explainer is longer than one printed page]
+* iOS 14 introduced a Precise Location app setting which may be turned off to
+use approximate location.
+When precise location is off, the app receives an approximate location estimate
+with accuracy between 2 kilometers and 10 kilometers based on the population
+density of the user's location.
+* On Android 12 and later, users choose to grant approximate or precise location
+permissions.
+When an app has the approximate location permission and not the precise location
+permission, it receives an approximate location estimate with a minimum accuracy
+of 2 kilometers.
 
-<!-- Update this table of contents by running `npx doctoc README.md` -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+# Proposal
 
-- [Introduction](#introduction)
-- [Goals](#goals)
-- [Non-goals](#non-goals)
-- [User research](#user-research)
-- [Use cases](#use-cases)
-  - [Use case 1](#use-case-1)
-  - [Use case 2](#use-case-2)
-- [[Potential Solution]](#potential-solution)
-  - [How this solution would solve the use cases](#how-this-solution-would-solve-the-use-cases)
-    - [Use case 1](#use-case-1-1)
-    - [Use case 2](#use-case-2-1)
-- [Detailed design discussion](#detailed-design-discussion)
-  - [[Tricky design choice #1]](#tricky-design-choice-1)
-  - [[Tricky design choice 2]](#tricky-design-choice-2)
-- [Considered alternatives](#considered-alternatives)
-  - [[Alternative 1]](#alternative-1)
-  - [[Alternative 2]](#alternative-2)
-- [Stakeholder Feedback / Opposition](#stakeholder-feedback--opposition)
-- [References & acknowledgements](#references--acknowledgements)
+This proposal introduces the concepts of approximate and precise location data.
+For the purpose of this proposal, precise location data is location data with an
+accuracy radius less or equal to than some bound, and all other location data is
+approximate.
+This proposal recommends adopting a bound of at least 2 kilometers.
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+**New permission.**
+A new approximate geolocation permission is introduced and the existing
+geolocation permission becomes the precise geolocation permission.
+A site is allowed to access geolocation if it has either the approximate or the
+precise permission.
+A site that does not have the precise location permission must not receive
+precise location data.
+A corresponding policy-control feature is introduced.
+
+**Generate approximate location data.**
+To generate an approximate position estimate the browser should prefer to use
+the system's approximate location source if available, but may acquire a precise
+position estimate and apply a coarsening algorithm.
+The coarsening algorithm must ensure it is not possible to infer the user's
+precise location from an approximate position estimate.
+
+As an example of a coarsening algorithm, see [LocationFudger](https://cs.android.com/android/platform/superproject/main/+/main:frameworks/base/services/core/java/com/android/server/location/fudger/LocationFudger.java)
+which is used by the platform location API on Android.
+This algorithm uses two techniques: snap-to-grid and random offsets.
+Snap-to-grid creates a many-to-one mapping of precise locations to approximate
+locations within a local area.
+Random offsets ensure precise location information cannot be inferred when
+crossing a grid boundary.
+
+**Request approximate location.**
+When calling `getCurrentPosition` or `watchPosition`, the caller may pass a
+parameter to request approximate location mode.
+If the caller requests approximate location mode it must only receive
+approximate location data.
+
+# Example
+
+```js
+function getCurrentApproximatePosition() {
+  return new Promise((resolve, reject) => {
+    if ('accuracyModes' in navigator.geolocation &&
+        navigator.geolocation.accuracyModes.includes('approximate')) {
+      navigator.geolocation.getCurrentPosition(
+          resolve, reject, {accuracyMode: 'approximate'});
+    } else {
+      reject(new Error('Approximate location not available'));
+    }
+  };
+}
+```
+
+# Potential specification changes
 
 ## Introduction
 
-[The "executive summary" or "abstract".
-Explain in a few sentences what the goals of the project are,
-and a brief overview of how the solution works.
-This should be no more than 1-2 paragraphs.]
+The introduction will be updated to introduce the concepts of precise and
+approximate location and define the accuracy bound for precise location.
 
-## Goals
+## PositionOptions dictionary
 
-[What is the **end-user need** which this project aims to address? Make this section short, and
-elaborate in the Use cases section.]
+Section 7 defines the [`PositionOptions`](https://www.w3.org/TR/geolocation/#position_options_interface)
+dictionary.
+Callers of `getCurrentPosition` and `watchPosition` can pass a `PositionOptions`
+parameter to modify the position request.
 
-## Non-goals
+```webidl
+dictionary PositionOptions {
+  boolean enableHighAccuracy = false;
+  [Clamp] unsigned long timeout = 0xFFFFFFFF;
+  [Clamp] unsigned long maximumAge = 0;
 
-[If there are "adjacent" goals which may appear to be in scope but aren't,
-enumerate them here. This section may be fleshed out as your design progresses and you encounter necessary technical and other trade-offs.]
+  // New
+  AccuracyMode accuracyMode = "default";
+};
 
-## User research
+enum AccuracyMode {
+  // The default accuracy mode.
+  "default",
 
-[If any user research has been conducted to inform your design choices,
-discuss the process and findings. User research should be more common than it is.]
+  // Request high accuracy location. Equivalent to enableHighAccuracy=true.
+  "high",
 
-## Use cases
-
-[Describe in detail what problems end-users are facing, which this project is trying to solve. A
-common mistake in this section is to take a web developer's or server operator's perspective, which
-makes reviewers worry that the proposal will violate [RFC 8890, The Internet is for End
-Users](https://www.rfc-editor.org/rfc/rfc8890).]
-
-### Use case 1
-
-### Use case 2
-
-<!-- In your initial explainer, you shouldn't be attached or appear attached to any of the potential
-solutions you describe below this. -->
-
-## [Potential Solution]
-
-[For each related element of the proposed solution - be it an additional JS method, a new object, a new element, a new concept etc., create a section which briefly describes it.]
-
-```js
-// Provide example code - not IDL - demonstrating the design of the feature.
-
-// If this API can be used on its own to address a user need,
-// link it back to one of the scenarios in the goals section.
-
-// If you need to show how to get the feature set up
-// (initialized, or using permissions, etc.), include that too.
+  // Require approximate location.
+  "approximate"
+}
 ```
 
-[Where necessary, provide links to longer explanations of the relevant pre-existing concepts and API.
-If there is no suitable external documentation, you might like to provide supplementary information as an appendix in this document, and provide an internal link where appropriate.]
+`PositionOptions` will be extended to add an `accuracyMode` member.
+Callers can pass `"approximate"` to request approximate location or `"high"` to
+request high accuracy.
+If `accuracyMode` is not set, it defaults to `"default"`.
 
-[If this is already specced, link to the relevant section of the spec.]
+If `accuracyMode` is not `"default"` then `enableHighAccuracy` is ignored.
 
-[If spec work is in progress, link to the PR or draft of the spec.]
+## Capability detection
 
-[If you have more potential solutions in mind, add ## Potential Solution 2, 3, etc. sections.]
+Section 6 defines the [`Geolocation`](https://www.w3.org/TR/geolocation/#geolocation_interface)
+interface.
 
-### How this solution would solve the use cases
-
-[If there are a suite of interacting APIs, show how they work together to solve the use cases described.]
-
-#### Use case 1
-
-[Description of the end-user scenario]
-
-```js
-// Sample code demonstrating how to use these APIs to address that scenario.
+```webidl
+partial interface Geolocation {
+  [SameObject] readonly attribute FrozenArray<AccuracyMode> accuracyModes;
+}
 ```
 
-#### Use case 2
+A site must be able to detect whether the implementation will honor
+`accuracyMode`.
+A new attribute `accuracyModes` contains a list of supported modes.
+If the list is `undefined` or the mode is not in the list, the mode will not be
+honored.
 
-[etc.]
+`accuracyModes` must always include `"default"` and `"high"`.
 
-## Detailed design discussion
+If `accuracyModes` includes `"approximate"` (indicating that the implementation
+supports approximate accuracy mode) but the implementation is not able to
+generate an approximate position estimate then `getCurrentPosition` and
+`watchPosition` must return `POSITION_UNAVAILABLE` when the `PositionOptions`
+parameter requires approximate location.
 
-### [Tricky design choice #1]
+## Permissions
 
-[Talk through the tradeoffs in coming to the specific design point you want to make.]
+Section 3.1 defines a powerful feature `"geolocation"`. The specification will
+be updated to define an additional powerful feature `"geolocation-approximate"`
+to control access to approximate location. The algorithms to interface with the
+`"geolocation-approximate"` powerful feature will be overridden to take into
+account the fact that `"geolocation"` is "stronger" than
+`"geolocation-approximate"` (for example, a site will be allowed to access
+approximate location data if it has either the `"geolocation-approximate"` or
+the `"geolocation"` permission).
 
-```js
-// Illustrated with example code.
-```
+## Permissions policy
 
-[This may be an open question,
-in which case you should link to any active discussion threads.]
+Section 11. defines a [policy-controlled
+feature](https://www.w3.org/TR/permissions-policy/#policy-controlled-feature)
+`"geolocation"`. It will be updated to define an additional policy-controlled
+feature `"geolocation-approximate"`, also with a default value of `"self"`,
+corresponding to the `"geolocation-approximate"` powerful feature. The
+`"geolocation"` feature will imply the `"geolocation-approximate"` feature.
 
-### [Tricky design choice 2]
+## Request a position
 
-[etc.]
+In Section 6.5, the [request a
+position](https://www.w3.org/TR/geolocation/#dfn-request-a-position) algorithm
+requests permission to use `"geolocation"`. It will be updated to request
+`"geolocation-approximate"` as a fallback (so that the user can grant only
+approximate geolocation even if the website requests access precise location
+data). Moreover, if the `PositionOptions` parameter specifies approximate
+location mode, it will only prompt for `"geolocation-approximate"`.
 
-## Considered alternatives
+## Acquire a position
 
-[This should include as many alternatives as you can,
-from high level architectural decisions down to alternative naming choices.]
+In Section 6.6, the [acquire a position](https://www.w3.org/TR/geolocation/#dfn-acquire-a-position)
+algorithm says "try to acquire position data from the underlying system,
+optionally taking into consideration the value of `options.enableHighAccuracy`
+during acquisition".
+It will be updated to also consider the location accuracy mode.
+Additionally, the algorithm will be updated to handle acquired position
+estimates that do not satisfy the accuracy bound.
 
-### [Alternative 1]
+# Alternatives considered
 
-[Describe an alternative which was considered,
-and why you decided against it.]
+A boolean option `enableHighAccuracy` is already specified and its default value
+is `false`.
+As an alternative to approximate location as an opt-in mode, provide approximate
+location by default and only provide precise location when high accuracy is
+requested.
 
-### [Alternative 2]
-
-[etc.]
-
-## Stakeholder Feedback / Opposition
-
-[Implementors and other stakeholders may already have publicly stated positions on this work. If you can, list them here with links to evidence as appropriate.]
-
-- [Implementor A] : Positive
-- [Stakeholder B] : No signals
-- [Implementor C] : Negative
-
-[If appropriate, explain the reasons given by other implementors for their concerns.]
-
-## References & acknowledgements
-
-[Your design will change and be informed by many people; acknowledge them in an ongoing way! It helps build community and, as we only get by through the contributions of many, is only fair.]
-
-[Unless you have a specific reason not to, these should be in alphabetical order.]
-
-Many thanks for valuable feedback and advice from:
-
-- [Person 1]
-- [Person 2]
-- [etc.]
+This was rejected because changing the behavior would degrade location quality
+for existing applications.
+`enableHighAccuracy` is specified as a hint that may be ignored by the
+implementation.
+Historically, the high accuracy hint indicates the implementation should prefer
+accuracy over speed; specifically, if the system has GPS capabilities it should
+wait for a GPS fix instead of returning a less precise result.
+This tradeoff is not necessary on modern systems as system location providers
+are able to generate a precise estimate quickly without waiting for GPS.
+As a result, the behavior on most systems is not affected by the
+`enableHighAccuracy` option and many applications use the default value
+regardless of whether high accuracy is needed.
