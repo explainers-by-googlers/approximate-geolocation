@@ -188,6 +188,9 @@ ensure that websites for which the user only granted access to coarse location
 can still use `navigator.permissions.query({ name: "geolocation" })` and get
 back `"granted"`.
 
+An analysis of how possible permission states and transitions could look like is
+[here](permission-states.md).
+
 ## Permissions policy
 
 Section 11. defines a [policy-controlled
