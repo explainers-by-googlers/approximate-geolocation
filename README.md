@@ -125,7 +125,7 @@ enum AccuracyMode {
   // The default accuracy mode.
   "default",
 
-  // Request high accuracy location. Equivalent to enableHighAccuracy=true.
+  // Request high accuracy location.
   "high",
 
   // Require approximate location.
@@ -137,8 +137,6 @@ enum AccuracyMode {
 Callers can pass `"approximate"` to request approximate location or `"high"` to
 request high accuracy.
 If `accuracyMode` is not set, it defaults to `"default"`.
-
-If `accuracyMode` is not `"default"` then `enableHighAccuracy` is ignored.
 
 ## Capability detection
 
@@ -167,33 +165,56 @@ parameter requires approximate location.
 
 ## Permissions
 
-Section 3.1 defines a powerful feature `"geolocation"`. The specification will
-be updated to define an additional powerful feature `"geolocation-approximate"`
-to control access to approximate location. The algorithms to interface with the
-`"geolocation-approximate"` powerful feature will be overridden to take into
-account the fact that `"geolocation"` is "stronger" than
-`"geolocation-approximate"` (for example, a site will be allowed to access
-approximate location data if it has either the `"geolocation-approximate"` or
-the `"geolocation"` permission).
+Section 3.1 defines a powerful feature `"geolocation"`. This will be updated to
+have a custom
+[PermissionDescriptor](https://w3c.github.io/permissions/#dom-permissiondescriptor)
+with an `accuracy` [aspect](https://w3c.github.io/permissions/#dfn-aspects):
+
+```webidl
+dictionary GeolocationPermissionDescriptor : PermissionDescriptor {
+  AccuracyMode accuracyMode = "default";
+}
+```
+
+`"high"` will be [stronger
+than](https://w3c.github.io/permissions/#ref-for-dfn-stronger-than-1)
+`"default"`, which will be stronger than `"approximate"`, so that if the user
+denies access to approximate location then the User Agent denies access to
+location at all, while if the user grants access to precise location, also
+approximate location is granted.
+
+The additional `"default"` value is needed for backwards compatibility, to
+ensure that websites for which the user only granted access to coarse location
+can still use `navigator.permissions.query({ name: "geolocation" })` and get
+back `"granted"`.
+
+An analysis of how possible permission states and transitions could look like is
+[here](permission-states.md).
 
 ## Permissions policy
 
 Section 11. defines a [policy-controlled
 feature](https://www.w3.org/TR/permissions-policy/#policy-controlled-feature)
 `"geolocation"`. It will be updated to define an additional policy-controlled
-feature `"geolocation-approximate"`, also with a default value of `"self"`,
-corresponding to the `"geolocation-approximate"` powerful feature. The
-`"geolocation"` feature will imply the `"geolocation-approximate"` feature.
+feature `"geolocation-approximate"`, also with a default value of `"self"`, that
+will only allow approximate location. The `"geolocation"` feature will imply the
+`"geolocation-approximate"` feature.
 
 ## Request a position
 
 In Section 6.5, the [request a
 position](https://www.w3.org/TR/geolocation/#dfn-request-a-position) algorithm
-requests permission to use `"geolocation"`. It will be updated to request
-`"geolocation-approximate"` as a fallback (so that the user can grant only
-approximate geolocation even if the website requests access precise location
-data). Moreover, if the `PositionOptions` parameter specifies approximate
-location mode, it will only prompt for `"geolocation-approximate"`.
+requests permission to use `"geolocation"`. It will be updated to allow for
+three different prompt cases:
+
+1. If the website doesn't set `accuracyMode="approximate"`, the user will be
+   prompted to choose between approximate and precise location.
+2. If the website sets `accuracyMode="approximate"`, the user will only be
+   prompted for approximate location.
+3. If the website has already been granted approximate location (as result of a
+   request with `accuracyMode="approximate"`) and now requests precise
+   location, the user will be prompted to upgrade their choice from approximate
+   to precise location.
 
 ## Acquire a position
 
@@ -206,6 +227,8 @@ Additionally, the algorithm will be updated to handle acquired position
 estimates that do not satisfy the accuracy bound.
 
 # Alternatives considered
+
+## Reusing `enableHighAccuracy`
 
 A boolean option `enableHighAccuracy` is already specified and its default value
 is `false`.
@@ -225,3 +248,17 @@ are able to generate a precise estimate quickly without waiting for GPS.
 As a result, the behavior on most systems is not affected by the
 `enableHighAccuracy` option and many applications use the default value
 regardless of whether high accuracy is needed.
+
+We could consider treating `enableHighAccuracy=true` the same as
+`accuracyMode="high"`. However, that would have a small backwards
+compatibility issue with `navigator.permissions.query({ name: "geolocation" })`,
+since it could result in different prompting behaviours (while querying the
+permission state would only return one state).
+
+## A separate `geolocation-approximate` powerful feature
+
+Instead of customizing `geolocation`'s PermissionDescriptor, we could add a
+separate `geolocation-approximate` powerful feature. However, this was rejected
+because of a backwards compatibility problem, since
+`navigator.permissions.query({ name: "geolocation" })` must return `"granted"`
+even if the user granted approximate geolocation only.
