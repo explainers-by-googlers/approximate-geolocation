@@ -127,3 +127,16 @@ graph TD;
     linkStyle 24 stroke:red;
     linkStyle 25 stroke:red;
 ```
+
+Note that the purpose of the additional mode "default" in the
+`PermissionDescriptor` is only to differentiate between the two states 5. and 6.
+In particular, this allows to trigger an upgrade prompt (from approximate
+to precise location) in both of the following two cases:
+
+- the website requests "approximate" first and later "default",
+- the website requests "default" first (to which the user grants "approximate")
+  and later "high".
+
+This can allow websites needing both approximate and precise location at
+different places to more easily and stepwise upgrade their code to specify the
+`AccuracyMode`.

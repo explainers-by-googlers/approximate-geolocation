@@ -183,13 +183,10 @@ denies access to approximate location then the User Agent denies access to
 location at all, while if the user grants access to precise location, also
 approximate location is granted.
 
-The additional `"default"` value is needed for backwards compatibility, to
-ensure that websites for which the user only granted access to coarse location
-can still use `navigator.permissions.query({ name: "geolocation" })` and get
-back `"granted"`.
-
-An analysis of how possible permission states and transitions could look like is
-[here](permission-states.md).
+The additional `"default"` value is useful for backwards compatibility, as it
+allows to keep track of the requested `AccuracyMode` when storing permission
+states. More details can be found in this [analysis](permission-states.md) of
+how possible permission states and transitions could look like.
 
 ## Permissions policy
 
