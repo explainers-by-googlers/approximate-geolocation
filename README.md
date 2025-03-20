@@ -84,17 +84,8 @@ approximate location data.
 # Example
 
 ```js
-function getCurrentApproximatePosition() {
-  return new Promise((resolve, reject) => {
-    if ('accuracyModes' in navigator.geolocation &&
-        navigator.geolocation.accuracyModes.includes('approximate')) {
-      navigator.geolocation.getCurrentPosition(
-          resolve, reject, {accuracyMode: 'approximate'});
-    } else {
-      reject(new Error('Approximate location not available'));
-    }
-  };
-}
+navigator.geolocation.getCurrentPosition(
+    onsuccess, onerror, {accuracyMode: 'approximate'});
 ```
 
 # Potential specification changes
@@ -140,28 +131,29 @@ If `accuracyMode` is not set, it defaults to `"default"`.
 
 ## Capability detection
 
-Section 6 defines the [`Geolocation`](https://www.w3.org/TR/geolocation/#geolocation_interface)
-interface.
+Support for approximate location can be detected with the following code:
 
-```webidl
-partial interface Geolocation {
-  [SameObject] readonly attribute FrozenArray<AccuracyMode> accuracyModes;
+```js
+function browserImplementsAccuracyMode() {
+  try {
+    navigator.geolocation.getCurrentPosition(
+      () => {},
+      () => {},
+      {
+        get accuracyMode() { throw new Error('1'); },
+        get enableHighAccuracy() { throw new Error('2'); }
+      }
+    );
+  } catch (e) {
+    if (e.message === '1') {
+      return true;
+    }
+    console.assert(e.message === '2');
+    return false;
+  }
+  console.assert(false, 'this code will never be reached');
 }
 ```
-
-A site must be able to detect whether the implementation will honor
-`accuracyMode`.
-A new attribute `accuracyModes` contains a list of supported modes.
-If the list is `undefined` or the mode is not in the list, the mode will not be
-honored.
-
-`accuracyModes` must always include `"default"` and `"high"`.
-
-If `accuracyModes` includes `"approximate"` (indicating that the implementation
-supports approximate accuracy mode) but the implementation is not able to
-generate an approximate position estimate then `getCurrentPosition` and
-`watchPosition` must return `POSITION_UNAVAILABLE` when the `PositionOptions`
-parameter requires approximate location.
 
 ## Permissions
 
@@ -215,13 +207,16 @@ three different prompt cases:
 
 ## Acquire a position
 
-In Section 6.6, the [acquire a position](https://www.w3.org/TR/geolocation/#dfn-acquire-a-position)
-algorithm says "try to acquire position data from the underlying system,
-optionally taking into consideration the value of `options.enableHighAccuracy`
-during acquisition".
-It will be updated to also consider the location accuracy mode.
+In Section 6.6, the [acquire a
+position](https://www.w3.org/TR/geolocation/#dfn-acquire-a-position) algorithm
+says "try to acquire position data from the underlying system, optionally
+taking into consideration the value of `options.enableHighAccuracy` during
+acquisition".  It will be updated to also consider the location accuracy mode.
 Additionally, the algorithm will be updated to handle acquired position
-estimates that do not satisfy the accuracy bound.
+estimates that do not satisfy the accuracy bound. In particular, if the
+implementation is not able to generate an approximate position estimate then
+`getCurrentPosition` and `watchPosition` must return `POSITION_UNAVAILABLE`
+when the `PositionOptions` parameter requires approximate location.
 
 # Alternatives considered
 
