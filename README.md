@@ -175,10 +175,35 @@ denies access to approximate location then the User Agent denies access to
 location at all, while if the user grants access to precise location, also
 approximate location is granted.
 
-The additional `"default"` value is useful for backwards compatibility, as it
-allows to keep track of the requested `AccuracyMode` when storing permission
-states. More details can be found in this [analysis](permission-states.md) of
-how possible permission states and transitions could look like.
+The value `"default"` basically means "let the user decide" and is useful for
+supporting the existing usages of the API in a backwards compatible way, while
+allowing web developers to explicitly upgrade to `"approximate"` or `"coarse"`
+if they want to.
+
+The [`Permissions.query()`](https://w3c.github.io/permissions/#query-method)
+method will return `"granted"`, `"denied"`, or `"prompt"` based on whether the
+corresponding call to `getCurrentPosition()` or `watchPosition()` would return a
+position, or throw `PERMISSION_DENIED`, or result in a prompt to the user,
+respectively. We can extend the returned
+[`PermissionStatus`](https://w3c.github.io/permissions/#permissionstatus-interface)
+to a custom `GeolocationPermissionStatus` including details about the accuracy
+of the granted geolocation permission:
+
+```webidl
+[Exposed=(Window,Worker)]
+interface GeolocationPermissionStatus : PermissionStatus {
+  readonly attribute Accuracy? accuracy;
+};
+
+enum Accuracy {
+  "high",
+  "approximate",
+};
+```
+
+More details on how possible permission states and transitions would look like
+and on how `Permissions.query()` would behave can be found in this
+[analysis](permission-states.md).
 
 ## Permissions policy
 
