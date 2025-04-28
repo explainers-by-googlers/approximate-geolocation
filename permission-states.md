@@ -39,15 +39,15 @@ valid states for the `"geolocation"` permission:
 
 Transitions between those states are summarized in the following table:
 
-| Initial state | Website requests `"approximate"`                                                     | Website requests `"default"`                                                                                                                   | Website requests `"high"`                                                                                                                      |
-|---------------|--------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1.            | No prompt, website gets `PERMISSION_DENIED`                                          | No prompt, website gets `PERMISSION_DENIED`                                                                                                    | No prompt, website gets `PERMISSION_DENIED`                                                                                                    |
-| 2.            | Prompt for approximate only and transition to 3. (if granted) or 1. (if denied).     | Prompt for approximate only and transition to 3. (if granted) or 1. (if denied).                                                               | No prompt, website gets `PERMISSION_DENIED`                                                                                                    |
-| 3.            | Return approximate location.                                                         | Return approximate location.                                                                                                                   | No prompt, website gets `PERMISSION_DENIED`                                                                                                    |
-| 4.            | Prompt for approximate location and transition to 5. if granted. or 1. (if denied).  | Prompt for either approximate or precise location and transition to 6. (if granted approximate) and 7. (if granted precise) or 1. (if denied). | Prompt for either approximate or precise location and transition to 3. (if granted approximate) and 7. (if granted precise) or 1. (if denied). |
-| 5.            | Return approximate location.                                                         | Prompt to upgrade from approximate to precise location and transition to 7. (if granted) or 3. (if denied).                                    | Prompt to upgrade from approximate to precise location and transition to 7. (if granted) or 3. (if denied).                                    |
-| 6.            | Return approximate location.                                                         | Return approximate location.                                                                                                                   | Prompt to upgrade from approximate to precise location and transition to 7. (if granted) or 3. (if denied).                                    |
-| 7.            | Return approximate location.                                                         | Return precise location.                                                                                                                       | Return precise location.                                                                                                                       |
+| Initial state | Website requests `"approximate"`                                                    | Website requests `"default"`                                                                                                                   | Website requests `"high"`                                                                                                                      |
+|---------------|-------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1.            | No prompt, website gets `PERMISSION_DENIED`                                         | No prompt, website gets `PERMISSION_DENIED`                                                                                                    | No prompt, website gets `PERMISSION_DENIED`                                                                                                    |
+| 2.            | Prompt for approximate only and transition to 3. (if granted) or 1. (if denied).    | Prompt for approximate only and transition to 3. (if granted) or 1. (if denied).                                                               | Prompt for approximate only and transition to 3. (if granted) or 1. (if denied).                                                               |
+| 3.            | Return approximate location.                                                        | Return approximate location.                                                                                                                   | Return approximate location.                                                                                                                   |
+| 4.            | Prompt for approximate location and transition to 5. if granted. or 1. (if denied). | Prompt for either approximate or precise location and transition to 6. (if granted approximate) and 7. (if granted precise) or 1. (if denied). | Prompt for either approximate or precise location and transition to 3. (if granted approximate) and 7. (if granted precise) or 1. (if denied). |
+| 5.            | Return approximate location.                                                        | Prompt to upgrade from approximate to precise location and transition to 7. (if granted) or 3. (if denied).                                    | Prompt to upgrade from approximate to precise location and transition to 7. (if granted) or 3. (if denied).                                    |
+| 6.            | Return approximate location.                                                        | Return approximate location.                                                                                                                   | Prompt to upgrade from approximate to precise location and transition to 7. (if granted) or 3. (if denied).                                    |
+| 7.            | Return approximate location.                                                        | Return precise location.                                                                                                                       | Return precise location.                                                                                                                       |
 
 and in the following diagram:
 
@@ -140,3 +140,21 @@ to precise location) in both of the following two cases:
 This can allow websites needing both approximate and precise location at
 different places to more easily and stepwise upgrade their code to specify the
 `AccuracyMode`.
+
+Finally, this is how `Permissions.query()` would behave in the different states:
+
+|    | `query` for `"approximate"`                 | `query` for `"default"`                     | `query` for `"high"`                        |
+|----|:-------------------------------------------:|:-------------------------------------------:|:-------------------------------------------:|
+| 1. | `state: "denied"`                           | `state: "denied"`                           | `state: "denied"`                           |
+| 2. | `state: "prompt"`                           | `state: "prompt"`                           | `state: "prompt"`                           |
+| 3. | `state: "granted", accuracy: "approximate"` | `state: "granted", accuracy: "approximate"` | `state: "granted", accuracy: "approximate"` |
+| 4. | `state: "prompt"`                           | `state: "prompt"`                           | `state: "prompt"`                           |
+| 5. | `state: "granted", accuracy: "approximate"` | `state: "prompt"`                           | `state: "prompt"`                           |
+| 6. | `state: "granted", accuracy: "approximate"` | `state: "granted", accuracy: "approximate"` | `state: "prompt"`                           |
+| 7. | `state: "granted", accuracy: "high"`        | `state: "granted", accuracy: "high"`        | `state: "granted", accuracy: "high"`        |
+
+In particular, `Permissions.query()` returns `"granted"`, `"denied"`, or
+`"prompt"` based on whether the corresponding call to `getCurrentPosition()` or
+`watchPosition()` would return a position, or throw `PERMISSION_DENIED`, or
+result in a prompt to the user, respectively. The additional `"accuracy"` is
+filled only if `state` is `"granted"`.
