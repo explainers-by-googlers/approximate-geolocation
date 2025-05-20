@@ -60,6 +60,12 @@ A site that does not have the precise location permission must not receive
 precise location data.
 A corresponding policy-control feature is introduced.
 
+**Permission Prompt and UI.**
+While this explainer does not go into the details of how the permission prompt
+and permission settings for geolocation should or could be updated to support
+approximate geolocation, the expectation is that the user agent surfaces the
+choice between approximate and precise geolocation to the user.
+
 **Generate approximate location data.**
 To generate an approximate position estimate the browser should prefer to use
 the system's approximate location source if available, but may acquire a precise
@@ -204,6 +210,31 @@ enum Accuracy {
 More details on how possible permission states and transitions would look like
 and on how `Permissions.query()` would behave can be found in this
 [analysis](permission-states.md).
+
+## Permission prompt
+
+The choice of whether the website should have access to precise or approximate
+geolocation should of course be under the user's control. If the website only
+queries approximate location, the user agent should simply ask the user if they
+want to grant access to approximate location. On the other hand, if the website
+queries precise or default location, the user should be presented with the
+choice between approximate or precise location (or nothing). In particular, the
+user should always have the possibility to only grant access to approximate
+location, even if the website requested access to precise location.
+
+To address the use case of different accuracy levels of geolocation needed for
+different parts or functionalities of the website, the user agent should also
+offer an "upgrade prompt", asking the user who already granted access to
+approximate location whether they actually want to upgrade that and grant access
+to precise geolocation. The website can trigger such "upgrade prompt" by first
+querying approximate/default geolocation and later querying default/precise
+geolocation, respectively.
+
+The various prompt possibilities would reflect the possible transitions between
+[permission states](permission-states.md).
+
+It must always be possible for the user to revoke the permission granted to a
+website or change its granularity at a later point in time.
 
 ## Permissions policy
 
