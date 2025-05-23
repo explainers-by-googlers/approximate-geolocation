@@ -115,13 +115,10 @@ dictionary PositionOptions {
   [Clamp] unsigned long maximumAge = 0;
 
   // New
-  AccuracyMode accuracyMode = "default";
+  AccuracyMode accuracyMode = "high";
 };
 
 enum AccuracyMode {
-  // The default accuracy mode.
-  "default",
-
   // Request high accuracy location.
   "high",
 
@@ -130,10 +127,10 @@ enum AccuracyMode {
 }
 ```
 
-`PositionOptions` will be extended to add an `accuracyMode` member.
-Callers can pass `"approximate"` to request approximate location or `"high"` to
-request high accuracy.
-If `accuracyMode` is not set, it defaults to `"default"`.
+`PositionOptions` will be extended to add an `accuracyMode` member. Callers can
+pass `"approximate"` to request approximate location or `"high"` to request high
+accuracy. If `accuracyMode` is not set, it defaults to `"high"` (for backwards
+compatibility, so that we do not break existing use cases).
 
 ## Capability detection
 
@@ -163,37 +160,26 @@ function browserImplementsAccuracyMode() {
 
 ## Permissions
 
-Section 3.1 defines a powerful feature `"geolocation"`. This will be updated to
-have a custom
-[PermissionDescriptor](https://w3c.github.io/permissions/#dom-permissiondescriptor)
-with an `accuracy` [aspect](https://w3c.github.io/permissions/#dfn-aspects):
+Section 3.1 defines a powerful feature `"geolocation"`. It will define an
+additional powerful feature `"geolocation-approximate"`. Setting `"geolocation"`
+to `"granted"` will automatically set `"geolocation-approximate"` to `"granted"`,
+while setting `"geolocation-approximate"` to `"denied`" will automatically set
+`"geolocation"` to `"denied"`. In other words, if the user denies access to
+approximate location then the User Agent denies access to location at all, while
+if the user grants access to precise location, also approximate location is
+granted.
 
-```webidl
-dictionary GeolocationPermissionDescriptor : PermissionDescriptor {
-  AccuracyMode accuracyMode = "default";
-}
-```
-
-`"high"` will be [stronger
-than](https://w3c.github.io/permissions/#ref-for-dfn-stronger-than-1)
-`"default"`, which will be stronger than `"approximate"`, so that if the user
-denies access to approximate location then the User Agent denies access to
-location at all, while if the user grants access to precise location, also
-approximate location is granted.
-
-The value `"default"` basically means "let the user decide" and is useful for
-supporting the existing usages of the API in a backwards compatible way, while
-allowing web developers to explicitly upgrade to `"approximate"` or `"coarse"`
-if they want to.
-
-The [`Permissions.query()`](https://w3c.github.io/permissions/#query-method)
-method will return `"granted"`, `"denied"`, or `"prompt"` based on whether the
-corresponding call to `getCurrentPosition()` or `watchPosition()` would return a
-position, or throw `PERMISSION_DENIED`, or result in a prompt to the user,
-respectively. We can extend the returned
+If `"geolocation"`'s state is `"denied"` but `"geolocation-approximate"`'s state
+is `"prompt"` or `"granted"`, a call to `getCurrentPosition()` or
+`watchPosition()` would trigger a permission prompt for approximate location or
+return approximate location, respectively. Correspondingly, the
+[`Permissions.query()`](https://w3c.github.io/permissions/#query-method) method
+for `"geolocation"` would return `"prompt"` or `"granted"` (even if only
+approximate geolocation is granted). In order to provide additional context to
+the website, the returned
 [`PermissionStatus`](https://w3c.github.io/permissions/#permissionstatus-interface)
-to a custom `GeolocationPermissionStatus` including details about the accuracy
-of the granted geolocation permission:
+for `"geolocation"` will be extended to a custom `GeolocationPermissionStatus`
+including details about the accuracy of the granted geolocation permission:
 
 ```webidl
 [Exposed=(Window,Worker)]
@@ -217,18 +203,17 @@ The choice of whether the website should have access to precise or approximate
 geolocation should of course be under the user's control. If the website only
 queries approximate location, the user agent should simply ask the user if they
 want to grant access to approximate location. On the other hand, if the website
-queries precise or default location, the user should be presented with the
-choice between approximate or precise location (or nothing). In particular, the
-user should always have the possibility to only grant access to approximate
-location, even if the website requested access to precise location.
+queries high accuracy location, the user should be presented with the choice
+between approximate or precise location (or nothing). In particular, the user
+should always have the possibility to only grant access to approximate location,
+even if the website requested access to precise location.
 
 To address the use case of different accuracy levels of geolocation needed for
 different parts or functionalities of the website, the user agent should also
 offer an "upgrade prompt", asking the user who already granted access to
 approximate location whether they actually want to upgrade that and grant access
 to precise geolocation. The website can trigger such "upgrade prompt" by first
-querying approximate/default geolocation and later querying default/precise
-geolocation, respectively.
+querying approximate geolocation and later querying precise geolocation.
 
 The various prompt possibilities would reflect the possible transitions between
 [permission states](permission-states.md).
@@ -302,11 +287,3 @@ We could consider treating `enableHighAccuracy=true` the same as
 compatibility issue with `navigator.permissions.query({ name: "geolocation" })`,
 since it could result in different prompting behaviours (while querying the
 permission state would only return one state).
-
-## A separate `geolocation-approximate` powerful feature
-
-Instead of customizing `geolocation`'s PermissionDescriptor, we could add a
-separate `geolocation-approximate` powerful feature. However, this was rejected
-because of a backwards compatibility problem, since
-`navigator.permissions.query({ name: "geolocation" })` must return `"granted"`
-even if the user granted approximate geolocation only.
