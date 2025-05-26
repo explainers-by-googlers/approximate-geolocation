@@ -13,7 +13,7 @@ The possible states for the permissions `"geolocation"` and `"geolocation-approx
 
 Transitions between those states are summarized in the following table:
 
-| Initial state | Website requests `"approximate"`                                                    | Website requests `"high"`                                                                                                                      |
+| Initial state | Website requests `"approximate"`                                                    | Website requests `"precise"`                                                                                                                      |
 |---------------|-------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
 | 1.            | No prompt, website gets `PERMISSION_DENIED`                                         | No prompt, website gets `PERMISSION_DENIED`                                                                                                    |
 | 2.            | Prompt for approximate only and transition to 3. (if granted) or 1. (if denied).    | Prompt for approximate only and transition to 3. (if granted) or 1. (if denied).                                                               |
@@ -47,12 +47,12 @@ graph TD;
       linkStyle 3 stroke:green;
       linkStyle 4 stroke:red;
     end
-    1[1<br>approximate: denied,<br>high: denied];
-    2[2<br>approximate: prompt,<br>high: denied];
-    3[3<br>approximate: granted,<br>high: denied];
-    4[4<br>approximate: prompt,<br>high: prompt];
-    5[5<br>approximate: granted,<br>high: prompt];
-    6[6<br>approximate: granted,<br>high: granted];
+    1[1<br>approximate: denied,<br>precise: denied];
+    2[2<br>approximate: prompt,<br>precise: denied];
+    3[3<br>approximate: granted,<br>precise: denied];
+    4[4<br>approximate: prompt,<br>precise: prompt];
+    5[5<br>approximate: granted,<br>precise: prompt];
+    6[6<br>approximate: granted,<br>precise: granted];
     4-->1;
     4==>1;
     4==>3;
@@ -81,9 +81,9 @@ Finally, this is how `Permissions.query()` would behave in the different states:
 | 1. | `state: "denied"`                       | `state: "denied"`                           |
 | 2. | `state: "prompt"`                       | `state: "prompt", accuracy: "approximate"`  |
 | 3. | `state: "granted"`                      | `state: "granted", accuracy: "approximate"` |
-| 4. | `state: "prompt"`                       | `state: "prompt", accuracy: "high"`         |
-| 5. | `state: "granted"`                      | `state: "prompt", accuracy: "high"`         |
-| 6. | `state: "granted"`                      | `state: "granted", accuracy: "high"`        |
+| 4. | `state: "prompt"`                       | `state: "prompt", accuracy: "precise"`      |
+| 5. | `state: "granted"`                      | `state: "prompt", accuracy: "precise"`      |
+| 6. | `state: "granted"`                      | `state: "granted", accuracy: "precise"`     |
 
 In particular, `Permissions.query()` returns `"granted"`, `"denied"`, or
 `"prompt"` based on whether the corresponding call to `getCurrentPosition()` or
