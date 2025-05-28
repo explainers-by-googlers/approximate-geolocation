@@ -115,12 +115,12 @@ dictionary PositionOptions {
   [Clamp] unsigned long maximumAge = 0;
 
   // New
-  AccuracyMode accuracyMode = "high";
+  AccuracyMode accuracyMode = "precise";
 };
 
 enum AccuracyMode {
-  // Request high accuracy location.
-  "high",
+  // Request precise location.
+  "precise",
 
   // Require approximate location.
   "approximate"
@@ -128,9 +128,9 @@ enum AccuracyMode {
 ```
 
 `PositionOptions` will be extended to add an `accuracyMode` member. Callers can
-pass `"approximate"` to request approximate location or `"high"` to request high
-accuracy. If `accuracyMode` is not set, it defaults to `"high"` (for backwards
-compatibility, so that we do not break existing use cases).
+pass `"approximate"` to request approximate location or `"precise"` to request
+precise location. If `accuracyMode` is not set, it defaults to `"precise"` (for
+backwards compatibility, so that we do not break existing use cases).
 
 ## Capability detection
 
@@ -184,11 +184,11 @@ including details about the accuracy of the granted geolocation permission:
 ```webidl
 [Exposed=(Window,Worker)]
 interface GeolocationPermissionStatus : PermissionStatus {
-  readonly attribute Accuracy? accuracy;
+  readonly attribute AccuracyMode? accuracyMode;
 };
 
-enum Accuracy {
-  "high",
+enum AccuracyMode {
+  "precise",
   "approximate",
 };
 ```
@@ -203,10 +203,10 @@ The choice of whether the website should have access to precise or approximate
 geolocation should of course be under the user's control. If the website only
 queries approximate location, the user agent should simply ask the user if they
 want to grant access to approximate location. On the other hand, if the website
-queries high accuracy location, the user should be presented with the choice
-between approximate or precise location (or nothing). In particular, the user
-should always have the possibility to only grant access to approximate location,
-even if the website requested access to precise location.
+queries precise location, the user should be presented with the choice between
+approximate or precise location (or nothing). In particular, the user should
+always have the possibility to only grant access to approximate location, even
+if the website requested access to precise location.
 
 To address the use case of different accuracy levels of geolocation needed for
 different parts or functionalities of the website, the user agent should also
@@ -264,10 +264,9 @@ when the `PositionOptions` parameter requires approximate location.
 ## Reusing `enableHighAccuracy`
 
 A boolean option `enableHighAccuracy` is already specified and its default value
-is `false`.
-As an alternative to approximate location as an opt-in mode, provide approximate
-location by default and only provide precise location when high accuracy is
-requested.
+is `false`. As an alternative to approximate location as an opt-in mode, provide
+approximate location by default and only provide precise location when it is
+explicitly requested.
 
 This was rejected because changing the behavior would degrade location quality
 for existing applications.
@@ -280,10 +279,10 @@ This tradeoff is not necessary on modern systems as system location providers
 are able to generate a precise estimate quickly without waiting for GPS.
 As a result, the behavior on most systems is not affected by the
 `enableHighAccuracy` option and many applications use the default value
-regardless of whether high accuracy is needed.
+regardless of whether precise location is needed.
 
 We could consider treating `enableHighAccuracy=true` the same as
-`accuracyMode="high"`. However, that would have a small backwards
-compatibility issue with `navigator.permissions.query({ name: "geolocation" })`,
-since it could result in different prompting behaviours (while querying the
-permission state would only return one state).
+`accuracyMode="precise"`. However, that would have a small backwards compatibility
+issue with `navigator.permissions.query({ name: "geolocation" })`, since it
+could result in different prompting behaviours (while querying the permission
+state would only return one state).
