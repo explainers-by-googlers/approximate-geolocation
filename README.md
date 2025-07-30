@@ -132,6 +132,28 @@ pass `"approximate"` to request approximate location or `"precise"` to request
 precise location. If `accuracyMode` is not set, it defaults to `"precise"` (for
 backwards compatibility, so that we do not break existing use cases).
 
+## Exposing Accuracy Level in GeolocationPosition
+
+To provide developers with clear information about the accuracy of the location
+data they receive, this proposal suggests adding a new `accuracyMode` attribute
+to the `GeolocationPosition` interface. This allows a site to determine whether
+the returned position is precise or approximate, which is particularly useful
+when the `accuracyMode` in `PositionOptions` is set to `"precise"` but an
+approximate location is returned.
+
+```webidl
+[Exposed=Window, SecureContext]
+interface GeolocationPosition {
+  readonly attribute GeolocationCoordinates coords;
+  readonly attribute EpochTimeStamp timestamp;
+
+  // New
+  readonly attribute AccuracyMode accuracyMode;
+
+  [Default] object toJSON();
+};
+```
+
 ## Capability detection
 
 Support for approximate location can be detected with the following code:
