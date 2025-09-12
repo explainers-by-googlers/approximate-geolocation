@@ -281,6 +281,22 @@ implementation is not able to generate an approximate position estimate then
 `getCurrentPosition` and `watchPosition` must return `POSITION_UNAVAILABLE`
 when the `PositionOptions` parameter requires approximate location.
 
+# Threats and Mitigations
+
+## Preventing Precise Location Reconstruction
+
+A privacy risk of approximate location is that a malicious actor could
+potentially infer a user's precise position by collecting and correlating
+multiple, distinct approximate positions over a short period of time. This
+explainer refers to this as a "precise location reconstruction" attack.
+
+To mitigate this risk, this proposal includes a caching mechanism. When a site
+receives an approximate position, any subsequent calls from that same site
+within a user-agent-defined time window (e.g., 15 minutes) should return the
+exact same, cached approximate position data. This mitigates the risk by
+significantly slowing down the time it would take for an attacker to collect
+enough distinct approximate positions to reconstruct a user's precise location.
+
 # Alternatives considered
 
 ## Reusing `enableHighAccuracy`
