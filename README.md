@@ -16,9 +16,9 @@ protect their location privacy and enable sites to request safer defaults when
 precise location is not needed.
 
 Some jurisdictions have passed laws defining "precise" location in terms of a
-maximum accuracy radius. Web browsers can facilitate compliance by providing API
-support for approximate geolocation data that meets these requirements. For
-example:
+maximum accuracy radius. These provide real-world examples of what developers
+might expect to receive from users sharing precise location vs. approximate
+location:
 
 * The [California Privacy Rights Act](https://www.caprivacy.org/cpra-text/#1798.140(w))
 defines precise geolocation as having an accuracy radius of 1,850 feet (564
