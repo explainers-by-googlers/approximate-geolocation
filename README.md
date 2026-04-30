@@ -15,10 +15,10 @@ Extending Geolocation API to support approximate location would empower users to
 protect their location privacy and enable sites to request safer defaults when
 precise location is not needed.
 
-In some jurisdictions it is illegal to collect precise geolocation data for
-specific purposes, where "precise" is defined by a maximum accuracy radius.
-Web browsers can facilitate compliance by providing API support for approximate
-geolocation data that meets these requirements.
+Some jurisdictions have passed laws defining "precise" location in terms of a
+maximum accuracy radius. Web browsers can facilitate compliance by providing API
+support for approximate geolocation data that meets these requirements. For
+example:
 
 * The [California Privacy Rights Act](https://www.caprivacy.org/cpra-text/#1798.140(w))
 defines precise geolocation as having an accuracy radius of 1,850 feet (564
