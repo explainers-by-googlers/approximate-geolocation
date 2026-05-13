@@ -79,11 +79,11 @@ Finally, this is how `Permissions.query()` would behave in the different states:
 |    | `query` for `"geolocation-approximate"` | `query` for `"geolocation"`                 |
 |----|:---------------------------------------:|:-------------------------------------------:|
 | 1. | `state: "denied"`                       | `state: "denied"`                           |
-| 2. | `state: "prompt"`                       | `state: "prompt", accuracy: "approximate"`  |
-| 3. | `state: "granted"`                      | `state: "granted", accuracy: "approximate"` |
-| 4. | `state: "prompt"`                       | `state: "prompt", accuracy: "precise"`      |
-| 5. | `state: "granted"`                      | `state: "prompt", accuracy: "precise"`      |
-| 6. | `state: "granted"`                      | `state: "granted", accuracy: "precise"`     |
+| 2. | `state: "prompt"`                       | `state: "prompt"`                           |
+| 3. | `state: "granted"`                      | `state: "granted"`                          |
+| 4. | `state: "prompt"`                       | `state: "prompt"`                           |
+| 5. | `state: "granted"`                      | `state: "prompt"`                           |
+| 6. | `state: "granted"`                      | `state: "granted"`                          |
 
 In particular, `Permissions.query()` returns `"granted"`, `"denied"`, or
 `"prompt"` based on whether the corresponding call to `getCurrentPosition()` or
