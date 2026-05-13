@@ -134,25 +134,13 @@ backwards compatibility, so that we do not break existing use cases).
 
 ## Exposing Accuracy Level in GeolocationPosition
 
-To provide developers with clear information about the accuracy of the location
-data they receive, this proposal suggests adding a new `accuracyMode` attribute
-to the `GeolocationPosition` interface. This allows a site to determine whether
-the returned position is precise or approximate, which is particularly useful
-when the `accuracyMode` in `PositionOptions` is set to `"precise"` but an
-approximate location is returned.
-
-```webidl
-[Exposed=Window, SecureContext]
-interface GeolocationPosition {
-  readonly attribute GeolocationCoordinates coords;
-  readonly attribute EpochTimeStamp timestamp;
-
-  // New
-  readonly attribute AccuracyMode accuracyMode;
-
-  [Default] object toJSON();
-};
-```
+Although we initially considered exposing the accuracy mode in the returned
+`GeolocationPosition`, it was eventually decided not to do so. In this way, the
+user choice (approximate/precise) is not exposed to the website. The website can
+still rely, for its functionality, on the accuracy of the returned
+`GeolocationCoordinates`, which can be higher or lower for a number of possible
+reasons. This now includes the possibility that the user only granted
+approximate geolocation access.
 
 ## Capability detection
 
@@ -197,23 +185,7 @@ is `"prompt"` or `"granted"`, a call to `getCurrentPosition()` or
 return approximate location, respectively. Correspondingly, the
 [`Permissions.query()`](https://w3c.github.io/permissions/#query-method) method
 for `"geolocation"` would return `"prompt"` or `"granted"` (even if only
-approximate geolocation is granted). In order to provide additional context to
-the website, the returned
-[`PermissionStatus`](https://w3c.github.io/permissions/#permissionstatus-interface)
-for `"geolocation"` will be extended to a custom `GeolocationPermissionStatus`
-including details about the accuracy of the granted geolocation permission:
-
-```webidl
-[Exposed=(Window,Worker)]
-interface GeolocationPermissionStatus : PermissionStatus {
-  readonly attribute AccuracyMode? accuracyMode;
-};
-
-enum AccuracyMode {
-  "precise",
-  "approximate",
-};
-```
+approximate geolocation is granted).
 
 More details on how possible permission states and transitions would look like
 and on how `Permissions.query()` would behave can be found in this
