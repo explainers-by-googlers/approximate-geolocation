@@ -170,47 +170,31 @@ function browserImplementsAccuracyMode() {
 
 ## Permissions
 
-Section 3.1 defines a powerful feature `"geolocation"`. It will define an
-additional powerful feature `"geolocation-approximate"`. Setting `"geolocation"`
-to `"granted"` will automatically set `"geolocation-approximate"` to `"granted"`,
-while setting `"geolocation-approximate"` to `"denied`" will automatically set
-`"geolocation"` to `"denied"`. In other words, if the user denies access to
-approximate location then the User Agent denies access to location at all, while
-if the user grants access to precise location, also approximate location is
-granted.
+Section 3.1 defines a powerful feature `"geolocation"`. When a site uses the
+Geolocation API, the user should have full control not only over the binary
+choice of granting or not granting location access, but also over the granted
+accuracy.
 
-If `"geolocation"`'s state is `"denied"` but `"geolocation-approximate"`'s state
-is `"prompt"` or `"granted"`, a call to `getCurrentPosition()` or
-`watchPosition()` would trigger a permission prompt for approximate location or
-return approximate location, respectively. Correspondingly, the
-[`Permissions.query()`](https://w3c.github.io/permissions/#query-method) method
-for `"geolocation"` would return `"prompt"` or `"granted"` (even if only
-approximate geolocation is granted).
+Hence we propose to adapt the [Request a
+position](https://www.w3.org/TR/geolocation/#request-a-position) algorithm, so
+that:
 
-More details on how possible permission states and transitions would look like
-and on how `Permissions.query()` would behave can be found in this
-[analysis](permission-states.md).
+- if the website requests precise location, the user is prompted to choose with
+  the two approximate/precise options.
 
-## Permission prompt
+- if the website only requests approximate location, the user is only prompted
+  to grant approximate location access.
 
-The choice of whether the website should have access to precise or approximate
-geolocation should of course be under the user's control. If the website only
-queries approximate location, the user agent should simply ask the user if they
-want to grant access to approximate location. On the other hand, if the website
-queries precise location, the user should be presented with the choice between
-approximate or precise location (or nothing). In particular, the user should
-always have the possibility to only grant access to approximate location, even
-if the website requested access to precise location.
+Note that the [Permissions](https://w3c.github.io/permissions/) specification
+does not go into details about how the user agent should internally store the
+user's choice. In any case, that choice is not exposed to the website, and the
+`permissions.query()` API still only exposes one value for the `"geolocation"`
+permission, returning `"granted"` if location with any accuracy is granted.
 
-To address the use case of different accuracy levels of geolocation needed for
-different parts or functionalities of the website, the user agent should also
-offer an "upgrade prompt", asking the user who already granted access to
-approximate location whether they actually want to upgrade that and grant access
-to precise geolocation. The website can trigger such "upgrade prompt" by first
-querying approximate geolocation and later querying precise geolocation.
-
-The various prompt possibilities would reflect the possible transitions between
-[permission states](permission-states.md).
+The [Permissions](https://w3c.github.io/permissions/) specification is also
+intentionally vague about the specific UI to display when prompting the user to
+choose between different options, and leaves freedom to the user agent in this
+regard.
 
 It must always be possible for the user to revoke the permission granted to a
 website or change its granularity at a later point in time.
@@ -297,91 +281,9 @@ issue with `navigator.permissions.query({ name: "geolocation" })`, since it
 could result in different prompting behaviours (while querying the permission
 state would only return one state).
 
-## Why a new powerful feature
+## A separate powerful feature
 
-This explainer proposes to gate approximate location behind a new powerful
-feature `"geolocation-approximate"`, which would be added on top of the already
-existent powerful feature `"geolocation"`, with the following rationale. A
-separate powerful feature allows browsers to display a permission prompt for
-approximate location only which is different than the permission prompt for
-precise geolocation.
-
-We considered the alternative of keeping a single powerful feature `"geolocation"`
-and letting the user agent store the granted granularity (approximate or
-precise) in a separate bit. However, with such model there is no way to
-distinguish between the following two cases:
-
-1. The website requested approximate geolocation and the user granted.
-2. The website requested precise geolocation but the user decided to grant
-   approximate only.
-
-This means that user agents cannot, in case 1., return approximate geolocation
-for an approximate geolocation request while showing an upgrade prompt for a
-precise geolocation request (because the specification would see the same single
-value in both cases when querying the permission state internally). And this
-seems undesirable, as websites which wanted to request approximate location only
-would not have a way of eventually switching to precise location in the future
-if they needed it (at least for user agents which persist permission states
-beyond a single session).
-
-We also thought about why the new powerful feature `"geolocation-approximate"`
-should be queryable via `permissions.query()` given that its returned state is
-mostly the same as for `"geolocation"` (see the permission states
-[analysis](permission-states.md)). The answer to this is that we want to keep
-the invariant that `getCurrentPosition()` prompts, resolves successfully or
-throws with permission error if and only if `permissions.query()` resolves with
-`"prompt"`, `"granted"` or `"denied"`, respectively. This allows websites
-currently relying on the API to easily switch to approximate location with
-minimal code changes, e.g. from
-
-```js
-navigator.permissions.query({ name:'geolocation' }).then((result) => {
-  if (result.state === 'granted') {
-    navigator.geolocation.getCurrentPosition(onGotPosition);
-  } else if (result.state === 'denied') {
-    showMessage("Geolocation access denied");
-  } else {
-    showHelpfulUI("Grant location access to see the store closest to you.");
-    navigator.geolocation.getCurrentPosition(onGotPosition);
-  }
-```
-
-into
-
-```js
-navigator.permissions.query({ name:'geolocation-approximate' }).then((result) => {
-  if (result.state === 'granted') {
-    navigator.geolocation.getCurrentPosition(onGotPosition, {accuracyMode: 'approximate'});
-  } else if (result.state === 'denied') {
-    showMessage("Geolocation access denied");
-  } else {
-    showHelpfulUI("Grant location access to see the store closest to you.");
-    navigator.geolocation.getCurrentPosition(onGotPosition, {accuracyMode: 'approximate'});
-  }
-```
-
-This seems the best solution to make adoption of approximate location easy and
-possible for websites.
-
-Note anyway that the existence of the two geolocation powerful features **does
-not expose** the granularity granted by the user after seeing a permission
-prompt with the options approximate/precise: After such a prompt is displayed,
-if the user grants any location access, querying both `"geolocation"` and
-`"geolocation-approximate"` would resolve as `"granted"`, and the user choice
-(approximate/precise) is protected. In particular, this doesn't seem to expose
-more information than needed.
-
-[Privacy concerns](https://github.com/w3c/permissions/issues/52) with regards to
-being able to discern that a permission is granted seem to apply in the same way
-to both the existent `"geolocation"` and `"geolocation-approximate"` powerful
-feature, and might be addressed, orthogonally from this proposal, by
-[allowing](https://github.com/w3c/permissions/pull/477) user agents to mask the
-queried permission states.
-
-## Why not a powerful feature with aspect and a custom permission descriptor
-
-An earlier version of this explainer was proposing adding an `accuracyMode`
-[aspect](https://w3c.github.io/permissions/#aspects) to the powerful feature
-`"geolocation"` and implementing a custom permission descriptor
-`GeolocationPermissionDescriptor`. This has been discarded in response to
-[feedback](https://github.com/explainers-by-googlers/approximate-geolocation/issues/9).
+An earlier version of this explainer proposed to gate approximate location
+behind a new powerful feature `"geolocation-approximate"`, which would have been
+added on top of the already existent powerful feature `"geolocation"`. This has
+been abandoned in response to feedback from other vendors.
