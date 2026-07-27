@@ -1,5 +1,19 @@
 # Approximate Geolocation - Permission states and transitions
 
+## Note
+
+This document outlines the details of the permission model initially proposed by
+the [explainer](README.md), exposing two different powerful features
+`"geolocation"` and `"geolocation-approximate"`. However, the explainer does not
+propose anymore to define a new powerful feature.
+
+This document is left for documentation purposes, also because it still outlines how a
+user agent can internally encode the different states for precise and
+approximate location (and in particular it documents how Chromium currently does
+that).
+
+## States and transitions
+
 The possible states for the permissions `"geolocation"` and `"geolocation-approximate"` will be
 
 |    | `geolocation-approximate` | `geolocation` |
@@ -13,7 +27,7 @@ The possible states for the permissions `"geolocation"` and `"geolocation-approx
 
 Transitions between those states are summarized in the following table:
 
-| Initial state | Website requests `"approximate"`                                                    | Website requests `"precise"`                                                                                                                      |
+| Initial state | Website requests `"approximate"`                                                    | Website requests `"precise"`                                                                                                                   |
 |---------------|-------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
 | 1.            | No prompt, website gets `PERMISSION_DENIED`                                         | No prompt, website gets `PERMISSION_DENIED`                                                                                                    |
 | 2.            | Prompt for approximate only and transition to 3. (if granted) or 1. (if denied).    | Prompt for approximate only and transition to 3. (if granted) or 1. (if denied).                                                               |
@@ -73,6 +87,8 @@ graph TD;
     linkStyle 12 stroke:red;
     linkStyle 13 stroke:green;
 ```
+
+## Permissions Query API
 
 Finally, this is how `Permissions.query()` would behave in the different states:
 
